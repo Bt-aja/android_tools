@@ -74,12 +74,36 @@ rm -rf *
 cp -a ${KERNEL_DIR}/* ${PROJECT_DIR}/kernels/msm-${KERNEL_VERSION}.${KERNEL_PATCHLEVEL}
 [[ -d ${AUDIO_KERNEL_DIR}/audio-kernel/ ]] && mkdir -p techpack/ && mv ${AUDIO_KERNEL_DIR}/audio-kernel/ techpack/audio
 git add --all > /dev/null 2>&1
-git commit -sm "OEM Release" > /dev/null 2>&1
+git -c "user.name="Adithya R" -c "user.email=gh0strider.2k18.reborn@gmail.com" commit -sm "OEM Release" > /dev/null 2>&1
 rm -rf ${PROJECT_DIR}/kernels/${UNZIP_DIR}
 
-# Hardcode best CAF TAG
-CAF_TAG="LA.UM.8.11.r1-02400-NICOBAR.0"
-git fetch msm "refs/tags/$CAF_TAG:$CAF_TAG" > /dev/null 2>&1
+# Find best CAF TAG
+if [ -z "$3" ]; then
+    echo "Fetching CAF tags"
+    git fetch msm "refs/tags/L*0:refs/tags/L*0" > /dev/null 2>&1
+else
+    echo "Fetching tags ending with $3"
+    git fetch msm "refs/tags/*$3:refs/tags/*$3" > /dev/null 2>&1
+fi
+echo "Finding best CAF base"
+CAF_TAG=""
+BEST_DIFF=999999
+if [ -z "$3" ]; then
+    TAGS=`git tag -l L*0`
+else
+    TAGS=`git tag -l *${3}`
+fi
+for TAG in $TAGS; do
+    [[ "$VERBOSE" != "n" ]] && echo "Comparing with $TAG"
+    TAG_DIFF="$(git diff $TAG --shortstat | sed "s|files changed.*||g" | sed "s| ||g")"
+    if [ ${TAG_DIFF} -lt ${BEST_DIFF} ]; then
+        BEST_DIFF=${TAG_DIFF}
+        CAF_TAG=${TAG}
+        [[ "$VERBOSE" != "n" ]] && echo "Current best TAG is ${CAF_TAG} with ${BEST_DIFF} file changes"
+    fi
+done
+[[ -z "$CAF_TAG" ]] && echo -e "Error!" && exit 1
+[[ "$VERBOSE" != "n" ]] && echo "Best CAF TAG is ${CAF_TAG} with ${BEST_DIFF} file changes"
 
 # Rebase to best CAF tag
 git checkout -q "refs/tags/${CAF_TAG}" -b "release-${CAF_TAG}"
@@ -135,7 +159,7 @@ DIFFPATHS=(
     "drivers/video/"
     "drivers/"
     "firmware/"
-    "fs/f2fs"
+    "fs/f2fs/"
     "fs/pstore/"
     "fs/"
     "init/"
@@ -156,11 +180,11 @@ DIFFPATHS=(
 )
 for ELEMENT in ${DIFFPATHS[@]}; do
     [[ -d $ELEMENT ]] && git add $ELEMENT > /dev/null 2>&1
-    git commit -sm "${ELEMENT::-1}: Import Xiaomi changes" > /dev/null 2>&1
+    git -c "user.name="Adithya R" -c "user.email=gh0strider.2k18.reborn@gmail.com" commit -sm "${ELEMENT::-1}: Import realme changes" > /dev/null 2>&1
 done
 # Remaining OEM modifications
 git add --all > /dev/null 2>&1
-git commit -sm "treewide: Import remaining Xiaomi changes" > /dev/null 2>&1
+git -c "user.name="Adithya R" -c "user.email=gh0strider.2k18.reborn@gmail.com" commit -sm "treewide: Import remaining realme changes" > /dev/null 2>&1
 
 # Push to GitHub
 if [[ ${ORGMEMBER} == "y" ]] && [[ ! -z ${GIT_TOKEN} ]]; then
